@@ -35,90 +35,301 @@ app.get("/api/health", (req, res) => {
 app.post("/api/generate-draft", async (req, res) => {
   const { type, eventName, details } = req.body;
 
-  if (!type) {
-    return res.status(400).json({ error: "Draft 'type' is required." });
+  const allowedTypes = [
+    "speaker",
+    "sponsor",
+    "newsletter"
+  ];
+
+  if (!allowedTypes.includes(type)) {
+    return res.status(400).json({
+      error: "Invalid AI draft type."
+    });
   }
+
+  if (!details?.trim()) {
+    return res.status(400).json({
+      error: "Please provide some context before generating a draft."
+    });
+  }
+
+  const gdgVoice = `
+You are writing on behalf of a student-led Google Developer Group
+On Campus chapter.
+
+Your writing should sound like a real university student organizer:
+clear, confident, friendly, direct, and thoughtful.
+
+The goal is to sound professional without sounding corporate.
+
+WRITING STYLE:
+- Use natural, conversational professional English.
+- Prefer short and medium-length sentences.
+- Get to the point quickly.
+- Sound like a real organizer, not a marketing department.
+- Be warm without being overly enthusiastic.
+- Be confident without exaggerating.
+- Use specific information provided by the organizer.
+- Keep paragraphs short.
+- Make the message easy to skim.
+
+DO NOT:
+- Invent facts.
+- Invent a relationship with the recipient.
+- Claim that you have followed someone's work unless the organizer explicitly says so.
+- Invent attendance numbers.
+- Invent sponsorship benefits.
+- Invent dates, locations, companies, projects, achievements, or credentials.
+- Use generic corporate language.
+- Overuse adjectives.
+- Use fake enthusiasm.
+- Use unnecessary emojis.
+- Use phrases such as:
+  "bridge the gap between theory and practice"
+  "empowering the next generation"
+  "unlock your potential"
+  "highly engaged community"
+  "mutually beneficial partnership"
+  "state-of-the-art"
+  "resounding success"
+  "we are thrilled"
+  "we would be honored"
+  "we would be delighted"
+  "passionate learners, builders, and innovators"
+  "make a meaningful impact"
+  unless the organizer explicitly asks for that wording.
+
+If important information is missing, use a simple placeholder such as
+[Date], [Link], [Name], or [Company] rather than making something up.
+
+Do not explain your writing choices.
+Return only the finished draft.
+`;
 
   let prompt = "";
+
+  if (type === "speaker") {
+    prompt = `
+${gdgVoice}
+
+Create a speaker outreach email.
+
+EVENT:
+${eventName || "[Event Name]"}
+
+ORGANIZER-PROVIDED CONTEXT:
+${details}
+
+The email should:
+
+1. Have a concise, natural subject line.
+2. Introduce the organizer and GDG chapter briefly.
+3. Explain why the organizer is reaching out.
+4. Explain the event and what the speaker would be invited to do.
+5. Include the relevant event details supplied by the organizer.
+6. Explain why the speaker could be a good fit only using information supplied by the organizer.
+7. Give a clear, low-pressure next step.
+8. End with a simple professional sign-off.
+
+Do not write a long description of GDG.
+Do not create a fake personal connection with the speaker.
+
+Target length:
+250–400 words.
+
+Format:
+Subject:
+[subject]
+
+[email body]
+`;
+  }
+
+  if (type === "sponsor") {
+    prompt = `
+${gdgVoice}
+
+Create a sponsorship outreach email.
+
+EVENT:
+${eventName || "[Event Name]"}
+
+ORGANIZER-PROVIDED CONTEXT:
+${details}
+
+The email should:
+
+1. Have a concise subject line.
+2. Introduce the organizer and chapter in 1–2 sentences.
+3. Explain the event clearly.
+4. State what the organization is looking for from the sponsor.
+5. Explain why this company is being approached, but only using information provided by the organizer.
+6. Clearly describe the relevant sponsor opportunities supplied by the organizer.
+7. Give a simple next step for discussing the opportunity.
+8. Keep the email focused on the actual sponsorship request.
+
+Do not make unsupported claims about:
+- recruitment access
+- audience size
+- talent quality
+- brand reach
+- ROI
+- social media exposure
+- event attendance
+
+unless the organizer explicitly provides those details.
+
+Avoid turning the email into a sponsorship brochure.
+
+Target length:
+300–450 words.
+
+Format:
+Subject:
+[subject]
+
+[email body]
+`;
+  }
+
   if (type === "newsletter") {
-    prompt = `You are an expert community manager for GDG On Campus (Google Developer Groups On Campus).
-Create a comprehensive, engaging Community Newsletter Draft based on these details:
-"${details || "General announcements, tech trends, and upcoming workshop highlights"}"
+    prompt = `
+${gdgVoice}
 
-The newsletter must include:
-1. An exciting subject line or header.
-2. A warm welcome note.
-3. Upcoming GDG event alerts (use "${eventName || "our upcoming workshops"}" if provided).
-4. Interactive tech trivia/facts.
-5. Next steps and call-to-actions.
+Create a GDG On Campus newsletter using the information provided.
 
-Format the output clearly with high-quality markdown, spacing, and professional, exciting developer community tone. Make it highly readable.`;
-  } else if (type === "sponsor") {
-    prompt = `You are an experienced organizer for GDG On Campus (Google Developer Groups On Campus) drafting a sponsor invitation.
-Event Name: "${eventName || "Annual DevFest/Hackathon"}"
-Sponsor Details / Value Proposition: "${details || "A vibrant tech talent audience of eager university students, sponsor tier highlights, and logo placements"}"
+NEWSLETTER CONTEXT:
+${details}
 
-Write a highly professional Sponsor Invitation letter.
-Include:
-1. Subject line format: "Sponsorship Invitation: ${eventName || "GDG Campus Event"} - Empowering Next-Gen Developers"
-2. Why partner with GDG (describe demographic and direct recruitment values).
-3. The details of the event and expectations.
-4. Call-to-action for scheduling a sponsorship sync.
+The newsletter should feel like something a student developer community
+would actually send to its members.
 
-Format custom placeholders with brackets (e.g. [Sponsor Contact Title], [Due Date]). Deliver a highly polished and effective request.`;
-  } else if (type === "speaker") {
-    prompt = `You are a Community Developer Lead for GDG On Campus writing an invitation to a prospective expert speaker.
-Event Name: "${eventName || "Special Tech Talk Session"}"
-Topic & Background details: "${details || "Deep dive into web developer tools, career advice, and Q&A"}"
+Prioritize:
+- upcoming events
+- important announcements
+- useful resources
+- deadlines
+- opportunities
+- clear calls to action
 
-Write an elegant, personal, yet professional Speaker Invitation.
-Include:
-1. Subject line format: "Speaker Invitation: ${eventName || "GDG Campus"} - Sharing Expertise with Our Developers"
-2. Warm greeting.
-3. What makes our GDG community unique and why we selected them specifically.
-4. Logical schedule information and event outline placeholders.
-5. Next steps to confirm and select convenient slots.
+Use headings only when they improve readability.
 
-Format as beautiful markdown. Keep tone respectful, welcoming, and inspiring.`;
-  } else {
-    // Event page details
-    prompt = `You are an event architect for GDG On Campus.
-Draft a highly compelling, searchable, and professional Event Announcement page copy for:
-Event Name: "${eventName || "DevFest University Event"}"
-Core topics and context: "${details || "Hands-on workshops, keynotes from Google Developers, and team networking"}"
+Do not pad the newsletter with generic motivational language.
 
-Include:
-1. Title and bold Hook statement.
-2. Event schedule placeholders.
-3. Clear highlights of key customer value/takeaways (What attendees will learn).
-4. Prerequisites or items attendees should bring.
+Do not invent:
+- events
+- dates
+- speakers
+- resources
+- statistics
+- announcements
+- links
 
-Make it clean, readable, and ready to list on the community portal.`;
+Use placeholders when necessary.
+
+Target length:
+300–500 words.
+
+Format the newsletter so it can be copied into an email platform with
+minimal editing.
+`;
   }
 
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt
-    });
+  const maxAttempts = 3;
+  let lastError: any = null;
 
-    const generatedText = response.text || "";
-    // Simple logic to guess a title from first line or generate standard one
-    const lines = generatedText.split("\n").filter(l => l.trim().length > 0);
-    let title = `${type.toUpperCase()} Draft for ${eventName || "GDG Event"}`;
-    if (lines.length > 0 && (lines[0].startsWith("#") || lines[0].toLowerCase().includes("subject"))) {
-      title = lines[0].replace(/^[#\s]+|subject:\s*/gi, "").trim();
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt
+      });
+
+      const generatedText = response.text || "";
+
+      if (!generatedText.trim()) {
+        throw new Error(
+          "Gemini returned an empty response."
+        );
+      }
+
+      const lines = generatedText
+        .split("\n")
+        .filter(line => line.trim());
+
+      let title = `${type} draft`;
+
+      if (lines.length > 0) {
+        const firstLine = lines[0]
+          .replace(/^#+\s*/, "")
+          .replace(/^subject:\s*/i, "")
+          .trim();
+
+        if (firstLine) {
+          title = firstLine;
+        }
+      }
+
+      return res.json({
+        success: true,
+        title,
+        content: generatedText
+      });
+
+    } catch (err: any) {
+      lastError = err;
+
+      const status =
+        err?.status ??
+        err?.error?.code;
+
+      console.error(
+        `Gemini generation attempt ${attempt}/${maxAttempts} failed:`,
+        err
+      );
+
+      if (
+        (status === 503 ||
+          status === 429 ||
+          status === 500) &&
+        attempt < maxAttempts
+      ) {
+        const delay = attempt * 2000;
+
+        await new Promise(resolve =>
+          setTimeout(resolve, delay)
+        );
+
+        continue;
+      }
+
+      break;
     }
-
-    res.json({
-      title,
-      content: generatedText,
-      success: true
-    });
-  } catch (err: any) {
-    console.error("Gemini Generation Error:", err);
-    res.status(500).json({ error: err.message || "Failed to generate draft content from Gemini." });
   }
+
+  const status =
+    lastError?.status ??
+    lastError?.error?.code;
+
+  if (status === 503) {
+    return res.status(503).json({
+      error:
+        "Gemini is temporarily unavailable. Please try again in a moment."
+    });
+  }
+
+  if (status === 429) {
+    return res.status(429).json({
+      error:
+        "Gemini rate limit reached. Please wait a moment and try again."
+    });
+  }
+
+  return res.status(500).json({
+    error:
+      lastError?.message ||
+      "Unable to generate the draft."
+  });
 });
 
 // New secure endpoint for the intelligent sponsor pitch builder and budget calculator
