@@ -1,0 +1,10 @@
+{
+  "name": "GDG Organizer Hub",
+  "description": "An automation of event planning, email drafts, feedback analytics, and Google Calendar sync for GDG Organizer.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

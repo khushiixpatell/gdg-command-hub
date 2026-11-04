@@ -1,0 +1,104 @@
+{
+  "entities": {
+    "draft": {
+      "title": "Draft",
+      "description": "An AI-generated or manually written email/outreach draft",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string", "enum": ["newsletter", "sponsor", "speaker", "event"] },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "creatorId": { "type": "string" }
+      },
+      "required": ["id", "title", "type", "content", "createdAt"]
+    },
+    "event": {
+      "title": "Event",
+      "description": "A scheduled GDG event with details, timeline, and registrations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "description": { "type": "string" },
+        "registrationCount": { "type": "integer" },
+        "targetRegistration": { "type": "integer" },
+        "status": { "type": "string", "enum": ["planning", "active", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "date", "status", "registrationCount"]
+    },
+    "milestone": {
+      "title": "Milestone",
+      "description": "A timeline item or deadline for planning an event",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "eventId": { "type": "string" },
+        "title": { "type": "string" },
+        "deadline": { "type": "string", "format": "date" },
+        "completed": { "type": "boolean" },
+        "assignedTo": { "type": "string" },
+        "syncedWithGCal": { "type": "boolean" },
+        "gcalEventId": { "type": "string" },
+        "reminderDays": { "type": "integer" }
+      },
+      "required": ["id", "eventId", "title", "deadline", "completed"]
+    },
+    "feedback": {
+      "title": "Feedback",
+      "description": "Attendee feedback for GDG events",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "eventId": { "type": "string" },
+        "score": { "type": "integer" },
+        "comments": { "type": "string" },
+        "attendeeName": { "type": "string" },
+        "sentiment": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "eventId", "score", "comments", "timestamp"]
+    },
+    "task": {
+      "title": "Task",
+      "description": "A task or assignment for organizing team members",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "assignedTo": { "type": "string" },
+        "status": { "type": "string", "enum": ["todo", "inprogress", "done"] },
+        "importance": { "type": "string", "enum": ["low", "medium", "high"] },
+        "dueDate": { "type": "string", "format": "date" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "assignedTo", "status", "importance"]
+    }
+  },
+  "firestore": {
+    "/drafts/{draftId}": {
+      "schema": "draft",
+      "description": "Storage for outreach & event drafts"
+    },
+    "/events/{eventId}": {
+      "schema": "event",
+      "description": "GDG Events record"
+    },
+    "/events/{eventId}/milestones/{milestoneId}": {
+      "schema": "milestone",
+      "description": "Timeline milestones for planning an event"
+    },
+    "/feedbacks/{feedbackId}": {
+      "schema": "feedback",
+      "description": "User feedback collection for events"
+    },
+    "/tasks/{taskId}": {
+      "schema": "task",
+      "description": "Team task assignments"
+    }
+  }
+}

@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default-deny catch-all rule
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Draft Collection Rules
+    match /drafts/{draftId} {
+      allow read, delete: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(draftId) && isValidDraft(incoming());
+      allow update: if isSignedIn() && isValidId(draftId) && isValidDraft(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'content', 'type', 'updatedAt'])
+      );
+    }
+
+    function isValidDraft(data) {
+      return data.keys().hasAll(['id', 'title', 'type', 'content', 'createdAt'])
+        && data.keys().size() <= 8
+        && data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() <= 200
+        && data.type is string && data.type in ['newsletter', 'sponsor', 'speaker', 'event']
+        && data.content is string && data.content.size() <= 10000;
+    }
+
+    // Events Collection Rules
+    match /events/{eventId} {
+      allow read, delete: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(eventId) && isValidEvent(incoming());
+      allow update: if isSignedIn() && isValidId(eventId) && isValidEvent(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'date', 'description', 'registrationCount', 'targetRegistration', 'status'])
+      );
+    }
+
+    function isValidEvent(data) {
+      return data.keys().hasAll(['id', 'name', 'date', 'status', 'registrationCount'])
+        && data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 200
+        && data.date is string && data.date.size() <= 128
+        && data.status is string && data.status in ['planning', 'active', 'completed']
+        && data.registrationCount is int;
+    }
+
+    // Milestones subcollection rules (under events)
+    match /events/{eventId}/milestones/{milestoneId} {
+      allow read, delete: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(eventId) && isValidId(milestoneId) && isValidMilestone(incoming());
+      allow update: if isSignedIn() && isValidId(eventId) && isValidId(milestoneId) && isValidMilestone(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'deadline', 'completed', 'assignedTo', 'syncedWithGCal', 'gcalEventId', 'reminderDays'])
+      );
+    }
+
+    function isValidMilestone(data) {
+      return data.keys().hasAll(['id', 'eventId', 'title', 'deadline', 'completed'])
+        && data.id is string && data.id.size() <= 128
+        && data.eventId is string && data.eventId.size() <= 128
+        && data.title is string && data.title.size() <= 200
+        && data.deadline is string && data.deadline.size() <= 128
+        && data.completed is bool;
+    }
+
+    // Feedbacks Collection Rules
+    match /feedbacks/{feedbackId} {
+      allow read, delete: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(feedbackId) && isValidFeedback(incoming());
+    }
+
+    function isValidFeedback(data) {
+      return data.keys().hasAll(['id', 'eventId', 'score', 'comments', 'timestamp'])
+        && data.id is string && data.id.size() <= 128
+        && data.eventId is string && data.eventId.size() <= 128
+        && data.score is int && data.score >= 1 && data.score <= 5
+        && data.comments is string && data.comments.size() <= 4000;
+    }
+
+    // Tasks Collection Rules
+    match /tasks/{taskId} {
+      allow read, delete: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(taskId) && isValidTask(incoming());
+      allow update: if isSignedIn() && isValidId(taskId) && isValidTask(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'assignedTo', 'status', 'importance', 'dueDate'])
+      );
+    }
+
+    function isValidTask(data) {
+      return data.keys().hasAll(['id', 'title', 'assignedTo', 'status', 'importance'])
+        && data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() <= 200
+        && data.assignedTo is string && data.assignedTo.size() <= 128
+        && data.status is string && data.status in ['todo', 'inprogress', 'done']
+        && data.importance is string && data.importance in ['low', 'medium', 'high'];
+    }
+  }
+}
